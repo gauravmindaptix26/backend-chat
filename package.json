@@ -9,8 +9,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node local.js",
-    "lint": "eslint .",
-    "build": "node server.js"
+    "lint": "eslint ."
   },
   "dependencies": {
     "cors": "^2.8.5",
