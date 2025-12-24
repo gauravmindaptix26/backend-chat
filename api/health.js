@@ -1,3 +1,6 @@
-export default function handler(_req, res) {
-  res.status(200).json({ ok: true });
+export default function handler(req, res) {
+  res.status(200).json({
+    status: "ok",
+    message: "Backend is live 🚀"
+  });
 }
