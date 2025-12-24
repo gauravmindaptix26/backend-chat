@@ -1,21 +1,21 @@
-import { generateZegoToken } from "../zegoToken.js";
+import { buildZegoToken } from "../zegoToken.js";
 
-export default async function handler(req, res) {
-  if (req.method !== "POST") {
+export default function handler(req, res) {
+  res.setHeader("Access-Control-Allow-Origin", process.env.FRONTEND_ORIGIN || "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+  if (req.method === "OPTIONS") return res.status(200).end();
+  if (req.method !== "GET")
     return res.status(405).json({ error: "Method not allowed" });
-  }
 
   try {
-    const { userId, roomId } = req.body;
+    const userId = String(req.query.userID || "").trim();
+    if (!userId) return res.status(400).json({ error: "userID required" });
 
-    if (!userId || !roomId) {
-      return res.status(400).json({ error: "Missing fields" });
-    }
-
-    const token = generateZegoToken(userId, roomId);
-
-    res.status(200).json({ token });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    const token = buildZegoToken(userId);
+    return res.status(200).json({ token });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
   }
 }
