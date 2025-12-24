@@ -1,30 +1,23 @@
 import express from "express";
 import cors from "cors";
 import "dotenv/config";
-import { buildZegoToken } from "./zcloud/token04.js";
+import { sendExpressToken } from "./tokenHandler.js";
 
 const app = express();
 
+const allowOrigin = process.env.FRONTEND_ORIGIN || "http://localhost:5173";
+
 app.use(
   cors({
-    origin: process.env.FRONTEND_ORIGIN || "http://localhost:5173",
+    origin: allowOrigin,
   })
 );
 
-app.get("/health", (req, res) => res.json({ ok: true }));
+app.get("/health", (_req, res) => res.json({ ok: true }));
 
-// local convenience route
-app.get("/api/zego/token", (req, res) => {
-  try {
-    const userID = String(req.query.userID || "").trim();
-    if (!userID) return res.status(400).json({ error: "userID required" });
-
-    const token = buildZegoToken(userID);
-    return res.json({ token });
-  } catch (e) {
-    return res.status(500).json({ error: e?.message || "Token generation failed" });
-  }
-});
+app.get("/api/token", sendExpressToken);
+// compatibility for older path
+app.get("/api/zego/token", sendExpressToken);
 
 const port = Number(process.env.PORT || 3001);
 app.listen(port, () => console.log(`server: http://localhost:${port}`));

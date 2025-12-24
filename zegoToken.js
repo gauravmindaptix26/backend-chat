@@ -1,15 +1,14 @@
 import crypto from "crypto";
 
-function RndNum(min, max) {
+function rndNum(min, max) {
   return Math.ceil(min + (max - min) * Math.random());
 }
 
 function makeRandomIv() {
-  const str = "0123456789abcdefghijklmnopqrstuvwxyz";
-  const result = [];
-  for (let i = 0; i < 16; i++)
-    result.push(str.charAt(Math.floor(Math.random() * str.length)));
-  return result.join("");
+  const chars = "0123456789abcdefghijklmnopqrstuvwxyz";
+  const bytes = [];
+  for (let i = 0; i < 16; i++) bytes.push(chars.charAt(Math.floor(Math.random() * chars.length)));
+  return bytes.join("");
 }
 
 function getAlgorithm(secretStr) {
@@ -28,7 +27,6 @@ function aesEncrypt(plainText, secret, iv) {
   return Buffer.concat([cipher.update(plainText, "utf8"), cipher.final()]);
 }
 
-// Token04 generator
 export function generateToken04(appId, userId, secret, effectiveTimeInSeconds, payload = "") {
   if (!appId || typeof appId !== "number") throw new Error("appID invalid");
   if (!userId || typeof userId !== "string") throw new Error("userId invalid");
@@ -41,7 +39,7 @@ export function generateToken04(appId, userId, secret, effectiveTimeInSeconds, p
   const tokenInfo = {
     app_id: appId,
     user_id: userId,
-    nonce: RndNum(-2147483648, 2147483647),
+    nonce: rndNum(-2147483648, 2147483647),
     ctime: createTime,
     expire: createTime + effectiveTimeInSeconds,
     payload: payload || "",
@@ -70,7 +68,6 @@ export function generateToken04(appId, userId, secret, effectiveTimeInSeconds, p
   return "04" + buf.toString("base64");
 }
 
-// Helper for endpoint
 export function buildZegoToken(userId) {
   const appId = Number(process.env.ZEGO_APP_ID);
   const secret = process.env.ZEGO_SERVER_SECRET;
