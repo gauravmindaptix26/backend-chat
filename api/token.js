@@ -10,7 +10,7 @@ const sanitizeUserId = (raw) =>
 let jwks = null;
 
 async function getJose() {
-  // jose v5 is ESM-only → dynamic import prevents require/esm crash
+  // jose v5 is ESM-only
   return await import("jose");
 }
 
@@ -21,10 +21,10 @@ async function verifyAuth0Token(req) {
 
   const domain = process.env.AUTH0_DOMAIN;
   const audience = process.env.AUTH0_AUDIENCE || process.env.AUTH0_CLIENT_ID;
+
   if (!domain) throw new Error("AUTH0_DOMAIN not configured");
   if (!audience) throw new Error("AUTH0_AUDIENCE or AUTH0_CLIENT_ID not configured");
 
-  // Your env sometimes contains full https://... domain (you pasted that earlier in JWT iss)
   const cleanDomain = domain.replace(/^https?:\/\//, "").replace(/\/$/, "");
   const issuer = `https://${cleanDomain}/`;
 
@@ -44,7 +44,6 @@ const getAllowedOrigin = (req) => {
     .split(",")
     .map((o) => o.trim())
     .filter(Boolean);
-<<<<<<< HEAD
 
   if (origins.includes("*")) return "*";
 
@@ -56,26 +55,16 @@ const getAllowedOrigin = (req) => {
 
 export default async function handler(req, res) {
   const origin = getAllowedOrigin(req);
+
   res.setHeader("Access-Control-Allow-Origin", origin);
   res.setHeader("Vary", "Origin");
   res.setHeader("Access-Control-Allow-Methods", "POST,OPTIONS");
-=======
-  if (origins.includes("*")) return "*";
-  const reqOrigin = req.headers.origin;
-  if (reqOrigin && origins.includes(reqOrigin)) return reqOrigin;
-  return origins[0] || "*";
-};
-
-export default function handler(req, res) {
-  const origin = getAllowedOrigin(req);
-  res.setHeader("Access-Control-Allow-Origin", origin);
-  res.setHeader("Vary", "Origin");
-  res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS");
->>>>>>> 1c46259894610ba95475e59c96fa30ee0a455858
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
 
   if (req.method === "OPTIONS") return res.status(200).end();
-  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
 
   try {
     const claims = await verifyAuth0Token(req);
@@ -92,7 +81,6 @@ export default function handler(req, res) {
     const msg = e?.message || "Token generation failed";
     const status =
       msg.includes("Missing Authorization") ? 401 :
-      msg.includes("not configured") ? 500 :
       msg.includes("JWT") || msg.includes("issuer") || msg.includes("audience") ? 401 :
       500;
 
