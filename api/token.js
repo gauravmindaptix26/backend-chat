@@ -1,4 +1,3 @@
-import { createRemoteJWKSet, jwtVerify } from "jose";
 import { buildZegoToken } from "../zegoToken.js";
 
 const sanitizeUserId = (raw) =>
@@ -10,6 +9,11 @@ const sanitizeUserId = (raw) =>
 
 let jwks = null;
 
+async function getJose() {
+  // jose v5 is ESM-only → dynamic import prevents require/esm crash
+  return await import("jose");
+}
+
 async function verifyAuth0Token(req) {
   const authHeader = req.headers.authorization || "";
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
@@ -20,7 +24,12 @@ async function verifyAuth0Token(req) {
   if (!domain) throw new Error("AUTH0_DOMAIN not configured");
   if (!audience) throw new Error("AUTH0_AUDIENCE or AUTH0_CLIENT_ID not configured");
 
-  const issuer = `https://${domain}/`;
+  // Your env sometimes contains full https://... domain (you pasted that earlier in JWT iss)
+  const cleanDomain = domain.replace(/^https?:\/\//, "").replace(/\/$/, "");
+  const issuer = `https://${cleanDomain}/`;
+
+  const { createRemoteJWKSet, jwtVerify } = await getJose();
+
   if (!jwks) {
     jwks = createRemoteJWKSet(new URL(`${issuer}.well-known/jwks.json`));
   }
@@ -29,30 +38,50 @@ async function verifyAuth0Token(req) {
   return payload;
 }
 
-export default function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", process.env.FRONTEND_ORIGIN || "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS");
+const getAllowedOrigin = (req) => {
+  const configured = process.env.FRONTEND_ORIGIN || "*";
+  const origins = configured
+    .split(",")
+    .map((o) => o.trim())
+    .filter(Boolean);
+
+  if (origins.includes("*")) return "*";
+
+  const reqOrigin = req.headers.origin;
+  if (reqOrigin && origins.includes(reqOrigin)) return reqOrigin;
+
+  return origins[0] || "*";
+};
+
+export default async function handler(req, res) {
+  const origin = getAllowedOrigin(req);
+  res.setHeader("Access-Control-Allow-Origin", origin);
+  res.setHeader("Vary", "Origin");
+  res.setHeader("Access-Control-Allow-Methods", "POST,OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
 
   if (req.method === "OPTIONS") return res.status(200).end();
-  if (req.method !== "GET")
-    return res.status(405).json({ error: "Method not allowed" });
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-  (async () => {
-    try {
-      const claims = await verifyAuth0Token(req);
-      const rawUserId = claims.email || claims.sub;
-      const userId = sanitizeUserId(rawUserId);
+  try {
+    const claims = await verifyAuth0Token(req);
+    const rawUserId = claims.email || claims.sub;
+    const userId = sanitizeUserId(rawUserId);
 
-      if (!userId) {
-        return res.status(400).json({ error: "Could not derive userID from Auth0 token" });
-      }
-
-      const token = buildZegoToken(userId);
-      return res.status(200).json({ token, userId });
-    } catch (e) {
-      const status = e.message?.includes("Missing Authorization") ? 401 : 500;
-      return res.status(status).json({ error: e.message || "Token generation failed" });
+    if (!userId) {
+      return res.status(400).json({ error: "Could not derive userId from Auth0 token" });
     }
-  })();
+
+    const token = buildZegoToken(userId);
+    return res.status(200).json({ token, userId });
+  } catch (e) {
+    const msg = e?.message || "Token generation failed";
+    const status =
+      msg.includes("Missing Authorization") ? 401 :
+      msg.includes("not configured") ? 500 :
+      msg.includes("JWT") || msg.includes("issuer") || msg.includes("audience") ? 401 :
+      500;
+
+    return res.status(status).json({ error: msg });
+  }
 }
