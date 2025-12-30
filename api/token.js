@@ -29,8 +29,22 @@ async function verifyAuth0Token(req) {
   return payload;
 }
 
+const getAllowedOrigin = (req) => {
+  const configured = process.env.FRONTEND_ORIGIN || "*";
+  const origins = configured
+    .split(",")
+    .map((o) => o.trim())
+    .filter(Boolean);
+  if (origins.includes("*")) return "*";
+  const reqOrigin = req.headers.origin;
+  if (reqOrigin && origins.includes(reqOrigin)) return reqOrigin;
+  return origins[0] || "*";
+};
+
 export default function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", process.env.FRONTEND_ORIGIN || "*");
+  const origin = getAllowedOrigin(req);
+  res.setHeader("Access-Control-Allow-Origin", origin);
+  res.setHeader("Vary", "Origin");
   res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
 
