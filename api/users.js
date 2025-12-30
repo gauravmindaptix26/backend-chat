@@ -20,6 +20,17 @@ const getAllowedOrigin = (req) => {
   return origins[0] || "*";
 };
 
+function applyCors(req, res, methods = ["GET"]) {
+  const origin = getAllowedOrigin(req);
+  res.setHeader("Access-Control-Allow-Origin", origin);
+  res.setHeader("Vary", "Origin");
+  res.setHeader("Access-Control-Allow-Methods", `${methods.join(",")},OPTIONS`);
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  if (origin !== "*") {
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+  }
+}
+
 let jwks = null;
 let mgmtTokenCache = null;
 
@@ -88,11 +99,7 @@ async function getMgmtToken() {
 }
 
 export default function handler(req, res) {
-  const origin = getAllowedOrigin(req);
-  res.setHeader("Access-Control-Allow-Origin", origin);
-  res.setHeader("Vary", "Origin");
-  res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  applyCors(req, res, ["GET"]);
 
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "GET")

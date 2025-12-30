@@ -53,14 +53,19 @@ const getAllowedOrigin = (req) => {
   return origins[0] || "*";
 };
 
-export default async function handler(req, res) {
+function applyCors(req, res, methods = ["GET"]) {
   const origin = getAllowedOrigin(req);
-
   res.setHeader("Access-Control-Allow-Origin", origin);
   res.setHeader("Vary", "Origin");
-  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  res.setHeader("Access-Control-Allow-Methods", `${methods.join(",")},OPTIONS`);
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  if (origin !== "*") {
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+  }
+}
 
+export default async function handler(req, res) {
+  applyCors(req, res, ["GET", "POST"]);
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "GET" && req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
