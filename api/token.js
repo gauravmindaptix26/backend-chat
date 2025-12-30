@@ -68,8 +68,16 @@ export default async function handler(req, res) {
 
   try {
     const claims = await verifyAuth0Token(req);
-    const rawUserId = claims.email || claims.sub;
-    const userId = sanitizeUserId(rawUserId);
+    const claimedUserId = sanitizeUserId(claims.email || claims.sub);
+    const providedUserId = sanitizeUserId(
+      req?.query?.userId || req?.query?.userID || "",
+    );
+
+    if (providedUserId && claimedUserId && providedUserId !== claimedUserId) {
+      return res.status(400).json({ error: "userId does not match Auth0 token" });
+    }
+
+    const userId = providedUserId || claimedUserId;
 
     if (!userId) {
       return res.status(400).json({ error: "Could not derive userId from Auth0 token" });
