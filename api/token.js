@@ -44,6 +44,7 @@ const getAllowedOrigin = (req) => {
     .split(",")
     .map((o) => o.trim())
     .filter(Boolean);
+<<<<<<< HEAD
 
   if (origins.includes("*")) return "*";
 
@@ -58,6 +59,19 @@ export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", origin);
   res.setHeader("Vary", "Origin");
   res.setHeader("Access-Control-Allow-Methods", "POST,OPTIONS");
+=======
+  if (origins.includes("*")) return "*";
+  const reqOrigin = req.headers.origin;
+  if (reqOrigin && origins.includes(reqOrigin)) return reqOrigin;
+  return origins[0] || "*";
+};
+
+export default function handler(req, res) {
+  const origin = getAllowedOrigin(req);
+  res.setHeader("Access-Control-Allow-Origin", origin);
+  res.setHeader("Vary", "Origin");
+  res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS");
+>>>>>>> 1c46259894610ba95475e59c96fa30ee0a455858
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
 
   if (req.method === "OPTIONS") return res.status(200).end();
