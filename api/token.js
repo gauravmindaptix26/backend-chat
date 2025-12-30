@@ -73,16 +73,7 @@ export default async function handler(req, res) {
 
   try {
     const claims = await verifyAuth0Token(req);
-    const claimedUserId = sanitizeUserId(claims.email || claims.sub);
-    const providedUserId = sanitizeUserId(
-      req?.query?.userID || req?.query?.userID || "",
-    );
-
-    if (providedUserId && claimedUserId && providedUserId !== claimedUserId) {
-      return res.status(400).json({ error: "userID does not match Auth0 token" });
-    }
-
-    const userID = providedUserId || claimedUserId;
+    const userID = sanitizeUserId(claims.email || claims.sub);
 
     if (!userID) {
       return res.status(400).json({ error: "Could not derive userID from Auth0 token" });
@@ -93,10 +84,11 @@ export default async function handler(req, res) {
   } catch (e) {
     const msg = e?.message || "Token generation failed";
     const status =
-      msg.includes("Missing Authorization") ? 401 :
+      msg.includes("Authorization") ? 401 :
       msg.includes("JWT") || msg.includes("issuer") || msg.includes("audience") ? 401 :
       500;
 
     return res.status(status).json({ error: msg });
   }
 }
+

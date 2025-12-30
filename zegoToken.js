@@ -6,32 +6,33 @@ function rndNum(min, max) {
 
 function makeRandomIv() {
   const chars = "0123456789abcdefghijklmnopqrstuvwxyz";
-  const result = [];
-  for (let i = 0; i < 16; i++) result.push(chars.charAt(Math.floor(Math.random() * chars.length)));
-  return result.join("");
+  let iv = "";
+  for (let i = 0; i < 16; i++) {
+    iv += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return iv;
 }
 
-function getAlgorithm(secretStr) {
-  const keyLen = Buffer.from(secretStr).length;
+function getAlgorithm(secret) {
+  const keyLen = secret.length; // secret is Buffer
   if (keyLen === 16) return "aes-128-cbc";
   if (keyLen === 24) return "aes-192-cbc";
   if (keyLen === 32) return "aes-256-cbc";
-  throw new Error("ZEGO_SERVER_SECRET must be 16/24/32 bytes (usually 32 chars)");
+  throw new Error("Invalid AES key length (must be 16/24/32 bytes)");
 }
 
 function aesEncrypt(plainText, secret, iv) {
   const algorithm = getAlgorithm(secret);
-  const key = Buffer.from(secret);
   const ivBuf = Buffer.from(iv);
-  const cipher = crypto.createCipheriv(algorithm, key, ivBuf);
+  const cipher = crypto.createCipheriv(algorithm, secret, ivBuf);
   return Buffer.concat([cipher.update(plainText, "utf8"), cipher.final()]);
 }
 
-// Token04 generator (per Zego docs)
+// Token04 generator (Zego spec)
 export function generateToken04(appId, userID, secret, effectiveTimeInSeconds, payload = "") {
   if (!appId || typeof appId !== "number") throw new Error("appID invalid");
   if (!userID || typeof userID !== "string") throw new Error("userID invalid");
-  if (!secret || typeof secret !== "string") throw new Error("secret invalid");
+  if (!Buffer.isBuffer(secret)) throw new Error("secret must be a Buffer");
   if (!effectiveTimeInSeconds || typeof effectiveTimeInSeconds !== "number")
     throw new Error("effectiveTimeInSeconds invalid");
 
@@ -69,14 +70,18 @@ export function generateToken04(appId, userID, secret, effectiveTimeInSeconds, p
   return "04" + buf.toString("base64");
 }
 
-// Helper for endpoints
+// Helper for API endpoints
 export function buildZegoToken(userID) {
   const appId = Number(process.env.ZEGO_APP_ID);
-  const secret = process.env.ZEGO_SERVER_SECRET;
+  const rawSecret = process.env.ZEGO_SERVER_SECRET;
   const expireSeconds = Number(process.env.ZEGO_TOKEN_EXPIRE_SECONDS || 3600);
 
-  if (!appId) throw new Error("ZEGO_APP_ID missing/invalid in backend/.env");
-  if (!secret) throw new Error("ZEGO_SERVER_SECRET missing in backend/.env");
+  if (!appId) throw new Error("ZEGO_APP_ID missing/invalid");
+  if (!rawSecret) throw new Error("ZEGO_SERVER_SECRET missing");
+  if (!userID) throw new Error("userID missing");
+
+  // 🔐 Force secret into a valid 32-byte AES key
+  const secret = crypto.createHash("sha256").update(rawSecret).digest();
 
   return generateToken04(appId, userID, secret, expireSeconds, "");
 }
