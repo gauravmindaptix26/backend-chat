@@ -75,21 +75,21 @@ export default async function handler(req, res) {
     const claims = await verifyAuth0Token(req);
     const claimedUserId = sanitizeUserId(claims.email || claims.sub);
     const providedUserId = sanitizeUserId(
-      req?.query?.userId || req?.query?.userID || "",
+      req?.query?.userID || req?.query?.userID || "",
     );
 
     if (providedUserId && claimedUserId && providedUserId !== claimedUserId) {
-      return res.status(400).json({ error: "userId does not match Auth0 token" });
+      return res.status(400).json({ error: "userID does not match Auth0 token" });
     }
 
-    const userId = providedUserId || claimedUserId;
+    const userID = providedUserId || claimedUserId;
 
-    if (!userId) {
-      return res.status(400).json({ error: "Could not derive userId from Auth0 token" });
+    if (!userID) {
+      return res.status(400).json({ error: "Could not derive userID from Auth0 token" });
     }
 
-    const token = buildZegoToken(userId);
-    return res.status(200).json({ token, userId });
+    const token = buildZegoToken(userID);
+    return res.status(200).json({ token, userID });
   } catch (e) {
     const msg = e?.message || "Token generation failed";
     const status =
