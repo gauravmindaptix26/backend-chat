@@ -1,4 +1,4 @@
-import crypto from "crypto";
+import crypto from "node:crypto";
 
 function rndNum(min, max) {
   return Math.ceil(min + (max - min) * Math.random());
